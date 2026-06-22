@@ -404,43 +404,197 @@ if len(df) > 0:
 # 周历
 # ======================
 
-from streamlit_calendar import calendar
+# ======================
+# Mac Style Weekly Calendar
+# ======================
 
 st.markdown("---")
-st.header("📅 Calendar")
 
-events = []
+st.header("📅 Weekly Calendar")
+# ----------------------
+# 记录当前查看第几周
+# ----------------------
+
+
+if "week_offset" not in st.session_state:
+
+    st.session_state.week_offset = 0
+
+
+col1,col2,col3 = st.columns([1,3,1])
+
+with col1:
+
+    if st.button("Previous Week"):
+        st.session_state.week_offset -= 1
+
+with col3:
+
+    if st.button("Next Week"):
+        st.session_state.week_offset += 1
+
+
+# ----------------------
+# 当前周
+# ----------------------
 
 if len(df) > 0:
 
-    for _, row in df.iterrows():
+    earliest_date = pd.to_datetime(
+        df["date"]
+    ).min()
 
-        if row["status"] == "available":
-            color = "#7BD88F"   # 绿色
-        else:
-            color = "#FF8A80"   # 红色
+    today = earliest_date
 
-        events.append(
-            {
-                "title": f"{row['restaurant']}",
-                "start": f"{row['date']}T{row['start']}",
-                "end": f"{row['date']}T{row['end']}",
-                "backgroundColor": color,
-                "borderColor": color,
-            }
+else:
+
+    today = datetime.today()
+
+week_start = (
+    today
+    - timedelta(days=today.weekday())
+    + timedelta(weeks=st.session_state.week_offset)
+)
+
+week_end = week_start + timedelta(days=6)
+
+
+st.subheader(
+    f"{week_start:%Y-%m-%d} ~ {week_end:%Y-%m-%d}"
+)
+
+
+# ----------------------
+# 日期栏
+# ----------------------
+
+week_days = []
+
+for i in range(7):
+
+    day = week_start + timedelta(days=i)
+
+    week_days.append(day)
+
+
+cols = st.columns(7)
+
+for i,day in enumerate(week_days):
+
+    cols[i].markdown(
+        f"""
+        <div style="
+            text-align:center;
+            padding:10px;
+            border-radius:10px;
+            border:1px solid rgba(150,150,150,0.4);
+            background-color:rgba(255,255,255,0.05);
+        ">
+        <b>{day.day}</b><br>
+        {day.strftime('%a')}
+        </div>
+        """,
+        unsafe_allow_html=True
         )
 
-calendar_options = {
-    "initialView": "dayGridMonth",
-    "headerToolbar": {
-        "left": "prev,next today",
-        "center": "title",
-        "right": "dayGridMonth,timeGridWeek"
-    },
-    "height": 700,
-}
+st.markdown("")
 
-calendar(
-    events=events,
-    options=calendar_options
+
+# ----------------------
+# 本周预约
+# ----------------------
+
+if len(df) > 0:
+
+    df["start_dt"] = pd.to_datetime(
+        df["date"] + " " + df["start"]
+    )
+
+    df["end_dt"] = pd.to_datetime(
+        df["date"] + " " + df["end"]
+    )
+
+    week_df = df[
+        (df["start_dt"].dt.date >= week_start.date())
+        &
+        (df["start_dt"].dt.date <= week_end.date())
+    ]
+
+else:
+
+    week_df = pd.DataFrame()
+
+
+# ----------------------
+# 每一天显示预约
+# ----------------------
+
+# ======================
+# Mobile Friendly Weekly View
+# ======================
+
+st.markdown("### 🗓 Weekly Schedule")
+
+for day in week_days:
+
+    st.markdown("---")
+
+    st.subheader(
+        day.strftime("%A, %Y-%m-%d")
+    )
+
+    day_events = week_df[
+        week_df["start_dt"].dt.date
+        ==
+        day.date()
+    ]
+
+    if len(day_events) == 0:
+
+        st.info("No bookings")
+
+    else:
+
+        for _, event in day_events.iterrows():
+
+            if event["status"] == "available":
+
+                status = "🟢 Available"
+
+                bg_color = "#E8F5E9"
+
+            else:
+
+                status = (
+                    f"🔴 Booked by "
+                    f"{event['user']}"
+                )
+
+st.markdown(
+    f"""
+    <div style="
+        padding:15px;
+        border-radius:12px;
+        margin-bottom:10px;
+        border:1px solid rgba(150,150,150,0.4);
+        background-color:rgba(255,255,255,0.05);
+    ">
+
+    <h4>🍽 {event['restaurant']}</h4>
+
+    <p>
+    ⏰ {event['start']} - {event['end']}
+    </p>
+
+    <p>
+    📝 {notes}
+    </p>
+
+    <p>
+    {status}
+    </p>
+
+    </div>
+    """,
+    unsafe_allow_html=True
 )
