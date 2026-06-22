@@ -92,35 +92,6 @@ def create_slot(
     return share_code
 
 # ======================
-# 删除Slot
-# ======================
-
-st.subheader("🗑 Delete Slot")
-
-if len(df) > 0:
-
-    delete_slot = st.selectbox(
-        "Choose Slot to Delete",
-        df["id"]
-    )
-
-    if st.button("Delete Slot"):
-
-        data = load_schedule()
-
-        data = [
-            item
-            for item in data
-            if item["id"] != delete_slot
-        ]
-
-        save_schedule(data)
-
-        st.success("Deleted!")
-
-        st.rerun()
-
-# ======================
 # 预约
 # ======================
 
@@ -241,12 +212,6 @@ if share_code:
 
         st.stop()
 
-if share_code:
-
-    ...
-
-    st.stop()
-
 # ======================
 # 数据表
 # ======================
@@ -261,28 +226,27 @@ if len(df) > 0:
 
     display_df = df.copy()
 
-display_df.index = range(
-    1,
-    len(display_df)+1
-)
+    display_df.index = range(
+        1,
+        len(display_df) + 1
+    )
 
-st.dataframe(
-    display_df[
-        [
-            "restaurant",
-            "date",
-            "start",
-            "end",
-            "status",
-            "user"
+    st.dataframe(
+        display_df[
+            [
+                "restaurant",
+                "date",
+                "start",
+                "end",
+                "status",
+                "user"
+            ]
         ]
-    ]
-)
+    )
 
 else:
 
     st.info("No bookings yet")
-
 
 # ======================
 # 创建预约
@@ -310,6 +274,7 @@ notes = st.sidebar.text_area(
     "Notes"
 )
 
+#生成分享链接
 
 if st.sidebar.button("Create Slot"):
 
@@ -321,19 +286,24 @@ if st.sidebar.button("Create Slot"):
         notes
     )
 
+    BASE_URL = "https://eat-with-leah.streamlit.app"
+
+    share_link = (
+        f"{BASE_URL}/?share={code}"
+    )
+
     st.sidebar.success(
         "Slot Created!"
     )
 
-    share_link = (
-        f"http://localhost:8501/?share={code}"
+    st.sidebar.write(
+        "Copy this link:"
     )
 
     st.sidebar.code(
         share_link
     )
 
-    st.rerun()
 
 # ======================
 # 预约
@@ -398,7 +368,38 @@ if len(df) > 0:
 
             st.rerun()
 
+# ======================
+# 删除Slot
+# ======================
 
+if len(df) > 0:
+
+    st.subheader("🗑 Delete Slot")
+
+    delete_id = st.selectbox(
+        "Choose Slot",
+        df["id"],
+        key="delete_slot"
+    )
+
+    if st.button(
+        "Delete Slot"
+    ):
+
+        data = load_schedule()
+
+        data = [
+            item
+            for item in data
+            if item["id"] != delete_id
+        ]
+
+        save_schedule(data)
+
+        st.success("Deleted!")
+
+        st.rerun()
+        
 # ======================
 # 周历
 # ======================
