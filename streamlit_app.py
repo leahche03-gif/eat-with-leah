@@ -404,223 +404,43 @@ if len(df) > 0:
 # 周历
 # ======================
 
-# ======================
-# Mac Style Weekly Calendar
-# ======================
+from streamlit_calendar import calendar
 
 st.markdown("---")
+st.header("📅 Calendar")
 
-st.header("📅 Weekly Calendar")
-# ----------------------
-# 记录当前查看第几周
-# ----------------------
-
-
-if "week_offset" not in st.session_state:
-
-    st.session_state.week_offset = 0
-
-
-col1,col2,col3 = st.columns([1,3,1])
-
-with col1:
-
-    if st.button("⬅ Previous Week"):
-        st.session_state.week_offset -= 1
-
-with col3:
-
-    if st.button("Next Week ➡"):
-        st.session_state.week_offset += 1
-
-
-# ----------------------
-# 当前周
-# ----------------------
+events = []
 
 if len(df) > 0:
 
-    earliest_date = pd.to_datetime(
-        df["date"]
-    ).min()
+    for _, row in df.iterrows():
 
-    today = earliest_date
+        if row["status"] == "available":
+            color = "#7BD88F"   # 绿色
+        else:
+            color = "#FF8A80"   # 红色
 
-else:
+        events.append(
+            {
+                "title": f"{row['restaurant']}",
+                "start": f"{row['date']}T{row['start']}",
+                "end": f"{row['date']}T{row['end']}",
+                "backgroundColor": color,
+                "borderColor": color,
+            }
+        )
 
-    today = datetime.today()
+calendar_options = {
+    "initialView": "dayGridMonth",
+    "headerToolbar": {
+        "left": "prev,next today",
+        "center": "title",
+        "right": "dayGridMonth,timeGridWeek"
+    },
+    "height": 700,
+}
 
-week_start = (
-    today
-    - timedelta(days=today.weekday())
-    + timedelta(weeks=st.session_state.week_offset)
+calendar(
+    events=events,
+    options=calendar_options
 )
-
-week_end = week_start + timedelta(days=6)
-
-
-st.subheader(
-    f"{week_start:%Y-%m-%d} ~ {week_end:%Y-%m-%d}"
-)
-
-
-# ----------------------
-# 日期栏
-# ----------------------
-
-week_days = []
-
-for i in range(7):
-
-    day = week_start + timedelta(days=i)
-
-    week_days.append(day)
-
-
-cols = st.columns(7)
-
-for i,day in enumerate(week_days):
-
-    cols[i].markdown(
-        f"""
-        <div style="
-            text-align:center;
-            padding:10px;
-            border-radius:10px;
-            background:#f0f2f6;
-        ">
-        <b>{day.day}</b><br>
-        {day.strftime('%a')}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-st.markdown("")
-
-
-# ----------------------
-# 本周预约
-# ----------------------
-
-if len(df) > 0:
-
-    df["start_dt"] = pd.to_datetime(
-        df["date"] + " " + df["start"]
-    )
-
-    df["end_dt"] = pd.to_datetime(
-        df["date"] + " " + df["end"]
-    )
-
-    week_df = df[
-        (df["start_dt"].dt.date >= week_start.date())
-        &
-        (df["start_dt"].dt.date <= week_end.date())
-    ]
-
-else:
-
-    week_df = pd.DataFrame()
-
-
-# ----------------------
-# 每一天显示预约
-# ----------------------
-
-st.markdown("### 🗓 Weekly Schedule")
-
-hours = list(range(8,23))
-
-header_cols = st.columns(8)
-
-header_cols[0].markdown("### Time")
-
-for i,day in enumerate(week_days):
-
-    header_cols[i+1].markdown(
-        f"""
-        <div style='text-align:center'>
-        <b>{day.day}</b><br>
-        {day.strftime('%a')}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-for hour in hours:
-
-    cols = st.columns(8)
-
-    cols[0].markdown(
-        f"**{hour:02d}:00**"
-    )
-
-    for day_idx,day in enumerate(week_days):
-
-        day_events = week_df[
-            week_df["start_dt"].dt.date
-            ==
-            day.date()
-        ]
-
-        found = False
-
-        for _,event in day_events.iterrows():
-
-            start_hour = pd.to_datetime(
-                event["start"],
-                format="%H:%M"
-            ).hour
-
-            end_hour = pd.to_datetime(
-                event["end"],
-                format="%H:%M"
-            ).hour
-
-            if start_hour <= hour < end_hour:
-
-                found = True
-
-                if event["status"] == "available":
-
-                    color = "#d4edda"
-
-                else:
-
-                    color = "#f8d7da"
-
-                cols[day_idx+1].markdown(
-                    f"""
-                    <div style="
-                        background:{color};
-                        border-radius:6px;
-                        padding:8px;
-                        text-align:center;
-                        min-height:60px;
-                    ">
-                    <b>{event['restaurant']}</b><br>
-                    {event['start']}<br>
-                    {event['end']}
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-                break
-
-        if not found:
-
-            cols[day_idx+1].markdown(
-                """
-                <div style="
-                    min-height:60px;
-                    border:1px solid #efefef;
-                    border-radius:5px;
-                ">
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
