@@ -438,6 +438,7 @@ with col3:
 # 当前周
 # ----------------------
 
+    
 if len(df) > 0:
 
     earliest_date = pd.to_datetime(
@@ -462,7 +463,6 @@ week_end = week_start + timedelta(days=6)
 st.subheader(
     f"{week_start:%Y-%m-%d} ~ {week_end:%Y-%m-%d}"
 )
-
 
 # ----------------------
 # 日期栏
@@ -495,7 +495,7 @@ for i,day in enumerate(week_days):
         </div>
         """,
         unsafe_allow_html=True
-        )
+    )
 
 st.markdown("")
 
@@ -522,8 +522,12 @@ if len(df) > 0:
 
 else:
 
-    week_df = pd.DataFrame()
-
+    week_df = pd.DataFrame(
+        columns=[
+            "start_dt",
+            "end_dt"
+        ]
+    )
 
 # ----------------------
 # 每一天显示预约
