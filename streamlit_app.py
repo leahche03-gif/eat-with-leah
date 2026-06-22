@@ -438,18 +438,26 @@ with col3:
 # 当前周
 # ----------------------
 
-    
 if len(df) > 0:
 
-    earliest_date = pd.to_datetime(
-        df["date"]
-    ).min()
-
+    earliest_date = pd.to_datetime(df["date"]).min()
     today = earliest_date
+
+    df["start_dt"] = pd.to_datetime(df["date"] + " " + df["start"])
+    df["end_dt"] = pd.to_datetime(df["date"] + " " + df["end"])
 
 else:
 
     today = datetime.today()
+
+    # 空数据时给“安全空列”
+    df = pd.DataFrame(columns=[
+        "date", "start", "end", "restaurant", "status", "user", "notes"
+    ])
+
+    df["start_dt"] = pd.Series(dtype="datetime64[ns]")
+    df["end_dt"] = pd.Series(dtype="datetime64[ns]")
+
 
 week_start = (
     today
@@ -468,18 +476,14 @@ st.subheader(
 # 日期栏
 # ----------------------
 
-week_days = []
-
-for i in range(7):
-
-    day = week_start + timedelta(days=i)
-
-    week_days.append(day)
-
+week_days = [
+    week_start + timedelta(days=i)
+    for i in range(7)
+]
 
 cols = st.columns(7)
 
-for i,day in enumerate(week_days):
+for i, day in enumerate(week_days):
 
     cols[i].markdown(
         f"""
@@ -489,6 +493,7 @@ for i,day in enumerate(week_days):
             border-radius:10px;
             border:1px solid rgba(150,150,150,0.4);
             background-color:rgba(255,255,255,0.05);
+            color:inherit;
         ">
         <b>{day.day}</b><br>
         {day.strftime('%a')}
@@ -499,106 +504,74 @@ for i,day in enumerate(week_days):
 
 st.markdown("")
 
-
 # ----------------------
 # 本周预约
 # ----------------------
 
-if len(df) > 0:
-
-    df["start_dt"] = pd.to_datetime(
-        df["date"] + " " + df["start"]
-    )
-
-    df["end_dt"] = pd.to_datetime(
-        df["date"] + " " + df["end"]
-    )
-
-    week_df = df[
-        (df["start_dt"].dt.date >= week_start.date())
-        &
-        (df["start_dt"].dt.date <= week_end.date())
-    ]
-
-else:
-
-    week_df = pd.DataFrame(
-        columns=[
-            "start_dt",
-            "end_dt"
-        ]
-    )
+week_df = df[
+    (df["start_dt"].notna()) &
+    (df["start_dt"].dt.date >= week_start.date()) &
+    (df["start_dt"].dt.date <= week_end.date())
+]
 
 # ----------------------
-# 每一天显示预约
-# ----------------------
-
-# ======================
 # Mobile Friendly Weekly View
-# ======================
+# ----------------------
 
 st.markdown("### 🗓 Weekly Schedule")
 
-for day in week_days:
+if week_df.empty:
 
-    st.markdown("---")
+    st.info("No bookings this week")
 
-    st.subheader(
-        day.strftime("%A, %Y-%m-%d")
-    )
+else:
 
-    day_events = week_df[
-        week_df["start_dt"].dt.date
-        ==
-        day.date()
-    ]
+    for day in week_days:
 
-    if len(day_events) == 0:
+        st.markdown("---")
 
-        st.info("No bookings")
+        st.subheader(day.strftime("%A, %Y-%m-%d"))
 
-    else:
+        day_events = week_df[
+            week_df["start_dt"].dt.date == day.date()
+        ]
 
-        for _, event in day_events.iterrows():
+        if day_events.empty:
 
-            if event["status"] == "available":
+            st.write("No bookings")
 
-                status = "🟢 Available"
+        else:
 
-                bg_color = "#E8F5E9"
-
-            else:
+            for _, event in day_events.iterrows():
 
                 status = (
-                    f"🔴 Booked by "
-                    f"{event['user']}"
+                    "🟢 Available"
+                    if event["status"] == "available"
+                    else f"🔴 Booked by {event['user']}"
                 )
 
-st.markdown(
-    f"""
-    <div style="
-        padding:15px;
-        border-radius:12px;
-        margin-bottom:10px;
-        border:1px solid rgba(150,150,150,0.4);
-        background-color:rgba(255,255,255,0.05);
-    ">
+                notes = event.get("notes", "")
 
-    <h4>🍽 {event['restaurant']}</h4>
+                st.markdown(
+                    f"""
+                    <div style="
+                        padding:15px;
+                        border-radius:12px;
+                        margin-bottom:10px;
+                        border:1px solid rgba(150,150,150,0.4);
+                        background-color:rgba(255,255,255,0.05);
+                        color:inherit;
+                    ">
 
-    <p>
-    ⏰ {event['start']} - {event['end']}
-    </p>
+                    <h4>🍽 {event['restaurant']}</h4>
 
-    <p>
-    📝 {notes}
-    </p>
+                    <p>⏰ {event['start']} - {event['end']}</p>
 
-    <p>
-    {status}
-    </p>
+                    <p>📝 {notes}</p>
 
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+                    <p>{status}</p>
+
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
